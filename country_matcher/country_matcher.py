@@ -2,6 +2,7 @@ from typing import Union, List, Tuple
 import json
 import string
 from thefuzz import fuzz, process
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -12,16 +13,17 @@ class CountryMatcher:
         self.__cities = list(self.__city_to_country_mapping.keys())
         self.__countries = list(self.__country_code_mapping.keys())
 
-    def find_country(self, addresses: Union[str, List[str]], confidence_threshold: int = 0) -> Union[int, List[int]]:
+    def find_country_hash(self, addresses: Union[str, List[str]], confidence_threshold: int = 0) -> Union[str, List[str]]:
         if isinstance(addresses, str):
             # If addresses is a string
-            return hash(self.__process_single_address(addresses, confidence_threshold)[0])
+            return self.__hash_string_sha256(self.__process_single_address(addresses, confidence_threshold)[0])
 
         elif isinstance(addresses, list) and all(isinstance(addr, str) for addr in addresses):
             results = []
             # If addresses is a list of strings
-            for address in addresses:
-                results.append(hash(self.__process_single_address(address, confidence_threshold)[0]))
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                results = list(executor.map(self.__process_single_address, addresses))
+            results = [self.__hash_string_sha256(result[0]) for result in results]
             return results
         else:
             print("Invalid input. Please provide a string or a list of strings.")
@@ -73,3 +75,8 @@ class CountryMatcher:
         address = address.translate(str.maketrans("", "", string.punctuation)).lower().split()[::-1]
 
         return address
+
+    @staticmethod
+    def __hash_string_sha256(input_string):
+        # Return the hexadecimal representation of the SHA-256 hash
+        return hashlib.sha256(input_string.encode('utf-8')).hexdigest()

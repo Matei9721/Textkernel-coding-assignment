@@ -30,7 +30,7 @@ class CountryMatcher:
 
     def __process_single_address(self, address: str, threshold: int = 0) -> Tuple[str, int]:
         final_result, final_confidence = None, 0
-        address = self.__pre_process_address(address)
+        address = self.pre_process_address(address)
 
         # Found country code using country name so early stopping. Only running this for last token based on assumption
         search_result, search_confidence = process.extractOne(address[0], self.__countries, scorer=fuzz.ratio)
@@ -65,14 +65,19 @@ class CountryMatcher:
             raise Exception(f"Error decoding JSON in {mapping_path}. {e}")
 
     @staticmethod
-    def __pre_process_address(address):
+    def pre_process_address(address):
         """
         Remove any punctuation signs, split into token based on spaces and reverse order of token as city or country
         are more likely to be at the end of an address (assumption based on data analysis)
         :param address: String of the address
         :return: List of tokens (strings)
         """
-        address = address.translate(str.maketrans("", "", string.punctuation)).lower().split()[::-1]
+        address = address.lower()
+
+        if "," in address:
+            address = address.split(",")[::-1]
+        else:
+            address = address.split()[::-1]
 
         return address
 

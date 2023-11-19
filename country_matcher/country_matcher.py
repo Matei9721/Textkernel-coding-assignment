@@ -1,19 +1,30 @@
 from typing import Union, List, Tuple
 import json
-import string
 from thefuzz import fuzz, process
 import hashlib
 from concurrent.futures import ThreadPoolExecutor
 
 
 class CountryMatcher:
+    """
+    Python class responsible for encapsulating the logic of matching an address to a country code using fuzzy string
+    matching.
+    """
     def __init__(self, city_to_country_mapping_path: str, country_code_mapping_path: str):
         self.__city_to_country_mapping = self.__load_mapping_from_json(city_to_country_mapping_path)
         self.__country_code_mapping = self.__load_mapping_from_json(country_code_mapping_path)
         self.__cities = list(self.__city_to_country_mapping.keys())
         self.__countries = list(self.__country_code_mapping.keys())
 
-    def find_country_hash(self, addresses: Union[str, List[str]], confidence_threshold: int = 0) -> Union[str, List[str]]:
+    def find_country_hash(self, addresses: Union[str, List[str]], confidence_threshold: int = 0) -> \
+            Union[str, List[str]]:
+        """
+        Main method that contain the logic for processing a single address or a batch of addresses. This function
+        retrieves the country code for each address, hashes it and returns it to the user.
+        :param addresses: String or List of Strings (addresses)
+        :param confidence_threshold: Confidence threshold for the matching
+        :return: Hashed value for the country code
+        """
         if isinstance(addresses, str):
             # If addresses is a string
             return self.__hash_string_sha256(self.__process_single_address(addresses, confidence_threshold)[0])
@@ -29,6 +40,13 @@ class CountryMatcher:
             print("Invalid input. Please provide a string or a list of strings.")
 
     def __process_single_address(self, address: str, threshold: int = 0) -> Tuple[str, int]:
+        """
+        Method responsible for matching a single address to its country. It uses fuzzy matching between each sub-string
+        of the address.
+        :param address: String of the address
+        :param threshold: Confidence threshold for the matching
+        :return: Country code (string)
+        """
         final_result, final_confidence = None, 0
         address = self.pre_process_address(address)
 
@@ -67,8 +85,9 @@ class CountryMatcher:
     @staticmethod
     def pre_process_address(address):
         """
-        Remove any punctuation signs, split into token based on spaces and reverse order of token as city or country
-        are more likely to be at the end of an address (assumption based on data analysis)
+        Split the address in sub-strings if commas are present in the string. If no commas available, split into tokens
+        based on empty spaces between words. Reverse the order of the sub-strings as the most important information
+        is usually at the end of an address.
         :param address: String of the address
         :return: List of tokens (strings)
         """
